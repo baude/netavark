@@ -74,36 +74,37 @@ impl Core {
         //we have the bridge name but we must iterate for all the available gateways
         for (idx, subnet) in network.subnets.iter().flatten().enumerate() {
             let subnet_mask_cidr = subnet.subnet.prefix_len();
+            if !network.internal {
+                if let Some(gw) = subnet.gateway {
+                    let gw_net = match gw {
+                        IpAddr::V4(gw4) => match ipnet::Ipv4Net::new(gw4, subnet_mask_cidr) {
+                            Ok(dest) => ipnet::IpNet::from(dest),
+                            Err(err) => {
+                                return Err(std::io::Error::new(
+                                    std::io::ErrorKind::Other,
+                                    format!(
+                                        "failed to parse address {}/{}: {}",
+                                        gw4, subnet_mask_cidr, err
+                                    ),
+                                ))
+                            }
+                        },
+                        IpAddr::V6(gw6) => match ipnet::Ipv6Net::new(gw6, subnet_mask_cidr) {
+                            Ok(dest) => ipnet::IpNet::from(dest),
+                            Err(err) => {
+                                return Err(std::io::Error::new(
+                                    std::io::ErrorKind::Other,
+                                    format!(
+                                        "failed to parse address {}/{}: {}",
+                                        gw6, subnet_mask_cidr, err
+                                    ),
+                                ))
+                            }
+                        },
+                    };
 
-            if let Some(gw) = subnet.gateway {
-                let gw_net = match gw {
-                    IpAddr::V4(gw4) => match ipnet::Ipv4Net::new(gw4, subnet_mask_cidr) {
-                        Ok(dest) => ipnet::IpNet::from(dest),
-                        Err(err) => {
-                            return Err(std::io::Error::new(
-                                std::io::ErrorKind::Other,
-                                format!(
-                                    "failed to parse address {}/{}: {}",
-                                    gw4, subnet_mask_cidr, err
-                                ),
-                            ))
-                        }
-                    },
-                    IpAddr::V6(gw6) => match ipnet::Ipv6Net::new(gw6, subnet_mask_cidr) {
-                        Ok(dest) => ipnet::IpNet::from(dest),
-                        Err(err) => {
-                            return Err(std::io::Error::new(
-                                std::io::ErrorKind::Other,
-                                format!(
-                                    "failed to parse address {}/{}: {}",
-                                    gw6, subnet_mask_cidr, err
-                                ),
-                            ))
-                        }
-                    },
-                };
-
-                gw_ipaddr_vector.push(gw_net)
+                    gw_ipaddr_vector.push(gw_net)
+                }
             }
 
             // Build up response information
